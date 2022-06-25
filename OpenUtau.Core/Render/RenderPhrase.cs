@@ -106,7 +106,7 @@ namespace OpenUtau.Core.Render {
         public readonly RenderNote[] notes;
         public readonly RenderPhone[] phones;
         public readonly int pitchStart;
-        public readonly float[] pitches;
+        public readonly float[] pitches;//音高曲线
         public readonly float[] pitchesBeforeDeviation;
         public readonly float[] dynamics;
         public readonly float[] gender;
@@ -118,6 +118,7 @@ namespace OpenUtau.Core.Render {
 
         internal readonly IRenderer renderer;
 
+        //渲染一段音素
         internal RenderPhrase(UProject project, UTrack track, UVoicePart part, IEnumerable<UPhoneme> phonemes) {
             var uNotes = new List<UNote>();
             uNotes.Add(phonemes.First().Parent);
