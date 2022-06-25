@@ -117,11 +117,10 @@ namespace OpenUtau.Core.Render {
         public readonly ulong hash;
 
         internal readonly IRenderer renderer;
-
-        //渲染一段音素
+        //渲染一段音素，可能是一个或多个
         internal RenderPhrase(UProject project, UTrack track, UVoicePart part, IEnumerable<UPhoneme> phonemes) {
-            var uNotes = new List<UNote>();
-            uNotes.Add(phonemes.First().Parent);
+            var uNotes = new List<UNote>();//所涉及的音符
+            uNotes.Add(phonemes.First().Parent);//首个音素所属音符。这段代码将所渲染音素所涉及的音符全部加入uNotes
             var endNote = phonemes.Last().Parent;
             while (endNote.Next != null && endNote.Next.Extends != null) {
                 endNote = endNote.Next;
@@ -129,8 +128,8 @@ namespace OpenUtau.Core.Render {
             while (uNotes.Last() != endNote) {
                 uNotes.Add(uNotes.Last().Next);
             }
-            var tail = uNotes.Last();
-            var next = tail.Next;
+            var tail = uNotes.Last();//所涉及的最后一个音符
+            var next = tail.Next;//所涉及的最后一个音符的下一个音符（未被涉及）
             while (next != null && next.Extends == tail) {
                 uNotes.Add(next);
                 next = next.Next;
@@ -150,22 +149,22 @@ namespace OpenUtau.Core.Render {
             tickToMs = 60000.0 / project.bpm * project.beatUnit / 4 / project.resolution;
 
             const int pitchInterval = 5;
-            pitchStart = phones[0].position - phones[0].leading;
-            pitches = new float[(phones.Last().position + phones.Last().duration - pitchStart) / pitchInterval + 1];
+            pitchStart = phones[0].position - phones[0].leading;//音高线起点：开头音素的位置-提前量，即开头音素的最终起点
+            pitches = new float[(phones.Last().position + phones.Last().duration - pitchStart) / pitchInterval + 1];//音高线长度。音高线终点为结尾音素的末端
             int index = 0;
             foreach (var note in uNotes) {
                 while (pitchStart + index * pitchInterval < note.End && index < pitches.Length) {
                     pitches[index] = note.tone * 100;
                     index++;
-                }
+                }//基础音高线为阶梯，只管当前处于哪个音符
             }
             index = Math.Max(1, index);
             while (index < pitches.Length) {
-                pitches[index] = pitches[index - 1];
+                pitches[index] = pitches[index - 1];//结尾如果还有多余的地方，就用最后一个音符的音高填充
                 index++;
             }
             foreach (var note in uNotes) {
-                if (note.vibrato.length <= 0) {
+                if (note.vibrato.length <= 0) {//如果音符的颤音长度<=0，则无颤音
                     continue;
                 }
                 int startIndex = Math.Max(0, (int)Math.Ceiling((float)(note.position - pitchStart) / pitchInterval));
