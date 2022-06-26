@@ -163,22 +163,22 @@ namespace OpenUtau.Core.Render {
                 pitches[index] = pitches[index - 1];//结尾如果还有多余的地方，就用最后一个音符的音高填充
                 index++;
             }
-            foreach (var note in uNotes) {
-                if (note.vibrato.length <= 0) {//如果音符的颤音长度<=0，则无颤音
+            foreach (var note in uNotes) {//对每个音符
+                if (note.vibrato.length <= 0) {//如果音符的颤音长度<=0，则无颤音。颤音长度按毫秒存储
                     continue;
                 }
-                int startIndex = Math.Max(0, (int)Math.Ceiling((float)(note.position - pitchStart) / pitchInterval));
-                int endIndex = Math.Min(pitches.Length, (note.End - pitchStart) / pitchInterval);
+                int startIndex = Math.Max(0, (int)Math.Ceiling((float)(note.position - pitchStart) / pitchInterval));//音符起点在采样音高线上的x坐标
+                int endIndex = Math.Min(pitches.Length, (note.End - pitchStart) / pitchInterval);//音符终点在采样音高线上的x坐标
                 for (int i = startIndex; i < endIndex; ++i) {
-                    float nPos = (float)(pitchStart + i * pitchInterval - note.position) / note.duration;
-                    float nPeriod = (float)project.MillisecondToTick(note.vibrato.period) / note.duration;
-                    var point = note.vibrato.Evaluate(nPos, nPeriod, note);
+                    float nPos = (float)(pitchStart + i * pitchInterval - note.position) / note.duration;//音符长度，单位为5tick
+                    float nPeriod = (float)project.MillisecondToTick(note.vibrato.period) / note.duration;//颤音长度，单位为5tick
+                    var point = note.vibrato.Evaluate(nPos, nPeriod, note);//将音符长度颤音长度代入进去，求出带颤音的音高线
                     pitches[i] = point.Y * 100;
                 }
             }
             foreach (var note in uNotes) {//对每个音符
                 var pitchPoints = note.pitch.data//音高控制点
-                    .Select(point => new PitchPoint(//OpenUTAU的控制点按秒存储（这个设计会导致修改曲速时出现混乱），这里先转成tick
+                    .Select(point => new PitchPoint(//OpenUTAU的控制点按毫秒存储（这个设计会导致修改曲速时出现混乱），这里先转成tick
                         project.MillisecondToTick(point.X) + note.position,
                         point.Y * 10 + note.tone * 100,
                         point.shape))
@@ -213,10 +213,10 @@ namespace OpenUtau.Core.Render {
             }
 
             pitchesBeforeDeviation = pitches.ToArray();
-            var curve = part.curves.FirstOrDefault(c => c.abbr == Format.Ustx.PITD);
-            if (curve != null && !curve.IsEmpty) {
+            var curve = part.curves.FirstOrDefault(c => c.abbr == Format.Ustx.PITD);//PITD为手绘音高线差值。这里从ustx工程中尝试调取该参数
+            if (curve != null && !curve.IsEmpty) {//如果参数存在
                 for (int i = 0; i < pitches.Length; ++i) {
-                    pitches[i] += curve.Sample(pitchStart + i * pitchInterval);
+                    pitches[i] += curve.Sample(pitchStart + i * pitchInterval);//每个点加上PITD的值
                 }
             }
 
