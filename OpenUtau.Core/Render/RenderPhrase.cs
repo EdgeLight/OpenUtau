@@ -148,7 +148,7 @@ namespace OpenUtau.Core.Render {
             tempo = project.bpm;
             tickToMs = 60000.0 / project.bpm * project.beatUnit / 4 / project.resolution;
 
-            const int pitchInterval = 5;
+            const int pitchInterval = 5;//每5tick一个音高点
             pitchStart = phones[0].position - phones[0].leading;//音高线起点：开头音素的位置-提前量，即开头音素的最终起点
             pitches = new float[(phones.Last().position + phones.Last().duration - pitchStart) / pitchInterval + 1];//音高线长度。音高线终点为结尾音素的末端
             int index = 0;
@@ -176,35 +176,35 @@ namespace OpenUtau.Core.Render {
                     pitches[i] = point.Y * 100;
                 }
             }
-            foreach (var note in uNotes) {
-                var pitchPoints = note.pitch.data
-                    .Select(point => new PitchPoint(
+            foreach (var note in uNotes) {//对每个音符
+                var pitchPoints = note.pitch.data//音高控制点
+                    .Select(point => new PitchPoint(//OpenUTAU的控制点按秒存储（这个设计会导致修改曲速时出现混乱），这里先转成tick
                         project.MillisecondToTick(point.X) + note.position,
                         point.Y * 10 + note.tone * 100,
                         point.shape))
                     .ToList();
-                if (pitchPoints.Count == 0) {
+                if (pitchPoints.Count == 0) {//如果没有控制点，则默认台阶形
                     pitchPoints.Add(new PitchPoint(note.position, note.tone * 100));
                     pitchPoints.Add(new PitchPoint(note.End, note.tone * 100));
                 }
                 if (note == uNotes.First() && pitchPoints[0].X > pitchStart) {
-                    pitchPoints.Insert(0, new PitchPoint(pitchStart, pitchPoints[0].Y));
+                    pitchPoints.Insert(0, new PitchPoint(pitchStart, pitchPoints[0].Y));//如果整个段落开头有控制点没覆盖到的地方（以音素开头为准），则向前水平延伸
                 } else if (pitchPoints[0].X > note.position) {
-                    pitchPoints.Insert(0, new PitchPoint(note.position, pitchPoints[0].Y));
+                    pitchPoints.Insert(0, new PitchPoint(note.position, pitchPoints[0].Y));//对于其他音符，则以卡拍点为准
                 }
                 if (pitchPoints.Last().X < note.End) {
-                    pitchPoints.Add(new PitchPoint(note.End, pitchPoints.Last().Y));
+                    pitchPoints.Add(new PitchPoint(note.End, pitchPoints.Last().Y));//如果整个段落结尾有控制点没覆盖到的地方，则向后水平延伸
                 }
-                PitchPoint lastPoint = pitchPoints[0];
-                index = Math.Max(0, (int)((lastPoint.X - pitchStart) / pitchInterval));
-                foreach (var point in pitchPoints.Skip(1)) {
-                    int x = pitchStart + index * pitchInterval;
-                    while (x < point.X && index < pitches.Length) {
-                        float pitch = (float)MusicMath.InterpolateShape(lastPoint.X, point.X, lastPoint.Y, point.Y, x, lastPoint.shape);
+                PitchPoint lastPoint = pitchPoints[0];//现在lastpoint是第一个控制点
+                index = Math.Max(0, (int)((lastPoint.X - pitchStart) / pitchInterval));//起点在采样音高线上的x坐标，以5tick为单位。如果第一个控制点在0前面，就从0开始，否则从第一个控制点开始
+                foreach (var point in pitchPoints.Skip(1)) {//对每一段曲线
+                    int x = pitchStart + index * pitchInterval;//起点在工程中的x坐标
+                    while (x < point.X && index < pitches.Length) {//遍历采样音高点
+                        float pitch = (float)MusicMath.InterpolateShape(lastPoint.X, point.X, lastPoint.Y, point.Y, x, lastPoint.shape);//绝对音高。插值，正式将控制点转化为曲线！
                         float basePitch = note.Prev != null && x < note.Prev.End
                             ? note.Prev.tone * 100
-                            : note.tone * 100;
-                        pitches[index] += pitch - basePitch;
+                            : note.tone * 100;//台阶基础音高
+                        pitches[index] += pitch - basePitch;//锚点音高比基础音高高了多少
                         index++;
                         x += pitchInterval;
                     }
