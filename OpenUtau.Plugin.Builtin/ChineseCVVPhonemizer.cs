@@ -19,13 +19,18 @@ namespace OpenUtau.Plugin.Builtin {
         /// The vowel split table.
         /// </summary>
         static readonly string vowels = "ai=_ai,uai=_uai,an=_an,ian=_en2,uan=_an,van=_en2,ang=_ang,iang=_ang,uang=_ang,ao=_ao,iao=_ao,ou=_ou,iu=_ou,ong=_ong,iong=_ong,ei=_ei,ui=_ei,uei=_ei,en=_en,un=_un,uen=_un,eng=_eng,in=_in,ing=_ing,vn=_vn";
+        static readonly string fallbacks = "ai=a2,uai=ua2,an=a,ian=ie,uan=ua,van=ue,ang=a1,iang=ia1,uang=ua1,ao=a1,iao=ia1,ou=o,iu=io,ong=o2,iong=io2,ei=e2,ui=ue2,en=e1,un=ue1,eng=e3,in=i,ing=i,vn=u";
 
         static HashSet<string> cSet;
         static Dictionary<string, string> vDict;
+        static Dictionary<string, string> fDict;
 
         static ChineseCVVPhonemizer() {
             cSet = new HashSet<string>(consonants.Split(','));
             vDict = vowels.Split(',')
+                .Select(s => s.Split('='))
+                .ToDictionary(a => a[0], a => a[1]);
+            fDict = fallbacks.Split(',')
                 .Select(s => s.Split('='))
                 .ToDictionary(a => a[0], a => a[1]);
         }
@@ -62,6 +67,12 @@ namespace OpenUtau.Plugin.Builtin {
                 vowel = "v" + vowel.Substring(1);
             }
             string phoneme0 = lyric;
+            // If october CV doesn't exist, fall back to Syo CV
+            var attr0 = notes[0].phonemeAttributes?.FirstOrDefault(attr => attr.index == 0) ?? default;
+            if (!singer.TryGetMappedOto(lyric, notes[0].tone + attr0.toneShift, attr0.voiceColor, out var cvOto)) {
+                string syolyric = consonant + fDict[vowel];
+                phoneme0 = syolyric;
+            }
             // We will need to split the total duration for phonemes, so we compute it here.
             int totalDuration = notes.Sum(n => n.duration);
             // Lookup the vowel split table. For example, "uang" will match "_ang".
