@@ -439,6 +439,96 @@ namespace OpenUtau.App.ViewModels {
             Selection.Select(Part);
             MessageBus.Current.SendMessage(new NotesSelectionEvent(Selection));
         }
+        
+        public UNote? NextNoteToSelect() {
+            //returns the note after the last selected note
+            //If the last note in the part is selected, return the last note itself
+            //If no note selected, return null
+            if (Part == null) {
+                return null;
+            }
+            if (Part.notes.Intersect(Selection).ToList().Count == 0) {
+                return null;
+            }
+            var lastSelectedNote = Part.notes.LastOrDefault(x => Selection.Contains(x));
+            if (lastSelectedNote == null) {
+                return null;
+            }
+            var nextNoteToSelect = lastSelectedNote.Next;
+            if(nextNoteToSelect == null) {
+                return lastSelectedNote;
+            } else {
+                return nextNoteToSelect;
+            }
+        }
+
+        public UNote? PrevNoteToSelect() {
+            //returns the note before the first selected note
+            //If the first note in the part is selected, return the first note itself
+            //If no note selected, return null
+            if (Part == null) {
+                return null;
+            }
+            if (Part.notes.Intersect(Selection).ToList().Count == 0) {
+                return null;
+            }
+            var firstSelectedNote = Part.notes.FirstOrDefault(x => Selection.Contains(x));
+            if (firstSelectedNote == null) {
+                return null;
+            }
+            var prevNoteToSelect = firstSelectedNote.Prev;
+            if (prevNoteToSelect == null) {
+                return firstSelectedNote;
+            } else {
+                return prevNoteToSelect;
+            }
+        }
+
+        public void SelectNextNote() {
+            if (Part == null) {
+                return;
+            }
+            var nextNoteToSelect = NextNoteToSelect();
+            if(nextNoteToSelect == null) {
+                return;
+            }
+            Selection.Select(nextNoteToSelect);
+            MessageBus.Current.SendMessage(new NotesSelectionEvent(Selection));
+        }
+
+        public void SelectPrevNote() {
+            if (Part == null) {
+                return;
+            }
+            var prevNoteToSelect = PrevNoteToSelect();
+            if (prevNoteToSelect == null) {
+                return;
+            }
+            Selection.Select(prevNoteToSelect);
+            MessageBus.Current.SendMessage(new NotesSelectionEvent(Selection));
+        }
+
+        public void AddNextNoteToSelection() {
+            if (Part == null) {
+                return;
+            }
+            var nextNoteToSelect = NextNoteToSelect();
+            if (nextNoteToSelect == null && Part.notes.Count > 0) {
+                nextNoteToSelect = Part.notes.First();
+            }
+            SelectNote(nextNoteToSelect);
+        }
+
+        public void AddPrevNoteToSelection() {
+            if (Part == null) {
+                return;
+            }
+            var prevNoteToSelect = PrevNoteToSelect();
+            if (prevNoteToSelect == null && Part.notes.Count > 0) {
+                prevNoteToSelect = Part.notes.First();
+            }
+            SelectNote(prevNoteToSelect);
+        }
 
         public void SelectNotesUntil(UNote note) {
             if (Part == null) {

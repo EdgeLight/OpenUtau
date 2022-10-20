@@ -806,6 +806,8 @@ namespace OpenUtau.App.Views {
                     case Key.P: notesVm.IsSnapOn = !notesVm.IsSnapOn; break;
                     case Key.Up: notesVm.TransposeSelection(1); break;
                     case Key.Down: notesVm.TransposeSelection(-1); break;
+                    case Key.Left: notesVm.SelectPrevNote(); break;
+                    case Key.Right: notesVm.SelectNextNote(); break;
                     case Key.Space:
                         if (ViewModel.PlaybackViewModel != null) {
                             try {
