@@ -856,6 +856,15 @@ namespace OpenUtau.App.Views {
                         args.Handled = false;
                         break;
                 }
+            } else if (args.KeyModifiers == (KeyModifiers.Shift)) {
+                args.Handled = true;
+                switch (args.Key) {
+                    case Key.Left: notesVm.AddPrevNoteToSelection(); break;
+                    case Key.Right: notesVm.AddNextNoteToSelection(); break;
+                    default:
+                        args.Handled = false;
+                        break;
+                }
             } else if (args.KeyModifiers == KeyModifiers.Alt) {
                 args.Handled = true;
                 switch (args.Key) {

@@ -6,6 +6,7 @@ using System.Numerics;
 using System.Reactive;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
+using System.Windows.Forms;
 using Avalonia;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
@@ -439,95 +440,85 @@ namespace OpenUtau.App.ViewModels {
             Selection.Select(Part);
             MessageBus.Current.SendMessage(new NotesSelectionEvent(Selection));
         }
-        
-        public UNote? NextNoteToSelect() {
-            //returns the note after the last selected note
-            //If the last note in the part is selected, return the last note itself
-            //If no note selected, return null
-            if (Part == null) {
-                return null;
-            }
-            if (Part.notes.Intersect(Selection).ToList().Count == 0) {
-                return null;
-            }
-            var lastSelectedNote = Part.notes.LastOrDefault(x => Selection.Contains(x));
-            if (lastSelectedNote == null) {
-                return null;
-            }
-            var nextNoteToSelect = lastSelectedNote.Next;
-            if(nextNoteToSelect == null) {
-                return lastSelectedNote;
-            } else {
-                return nextNoteToSelect;
-            }
-        }
-
-        public UNote? PrevNoteToSelect() {
-            //returns the note before the first selected note
-            //If the first note in the part is selected, return the first note itself
-            //If no note selected, return null
-            if (Part == null) {
-                return null;
-            }
-            if (Part.notes.Intersect(Selection).ToList().Count == 0) {
-                return null;
-            }
-            var firstSelectedNote = Part.notes.FirstOrDefault(x => Selection.Contains(x));
-            if (firstSelectedNote == null) {
-                return null;
-            }
-            var prevNoteToSelect = firstSelectedNote.Prev;
-            if (prevNoteToSelect == null) {
-                return firstSelectedNote;
-            } else {
-                return prevNoteToSelect;
-            }
-        }
 
         public void SelectNextNote() {
+            //Hotkey: Right
+            //If only one note is selected, select the note after it
+            //If multiple notes are selected, select the last selected note only, discarding range selection
             if (Part == null) {
                 return;
             }
-            var nextNoteToSelect = NextNoteToSelect();
-            if(nextNoteToSelect == null) {
-                return;
+            int selectionCount = Part.notes.Intersect(Selection).ToList().Count;
+            switch (selectionCount) {
+                case 0: return;
+                case 1:
+                    var lastSelectedNote = Part.notes.LastOrDefault(x => Selection.Contains(x));
+                    var nextNoteToSelect = lastSelectedNote.Next;
+                    if (nextNoteToSelect == null) {
+                        return;
+                    }
+                    Selection.Select(nextNoteToSelect);
+                    break;
+                default:
+                    Selection.Select(Part.notes.LastOrDefault(x => Selection.Contains(x)));
+                    break;
             }
-            Selection.Select(nextNoteToSelect);
             MessageBus.Current.SendMessage(new NotesSelectionEvent(Selection));
         }
 
         public void SelectPrevNote() {
+            //Hotkey: Left
+            //If only one note is selected, select the note before it
+            //If multiple notes are selected, select the first selected note only, discarding range selection
             if (Part == null) {
                 return;
             }
-            var prevNoteToSelect = PrevNoteToSelect();
-            if (prevNoteToSelect == null) {
-                return;
+            int selectionCount = Part.notes.Intersect(Selection).ToList().Count;
+            switch (selectionCount) {
+                case 0: return;
+                case 1:
+                    var firstSelectedNote = Part.notes.FirstOrDefault(x => Selection.Contains(x));
+                    var prevNoteToSelect = firstSelectedNote.Prev;
+                    if (prevNoteToSelect == null) {
+                        return;
+                    }
+                    Selection.Select(prevNoteToSelect);
+                    break;
+                default:
+                    Selection.Select(Part.notes.FirstOrDefault(x => Selection.Contains(x)));
+                    break;
             }
-            Selection.Select(prevNoteToSelect);
             MessageBus.Current.SendMessage(new NotesSelectionEvent(Selection));
         }
 
         public void AddNextNoteToSelection() {
+            //Hotkey: Shift+Right
             if (Part == null) {
                 return;
             }
-            var nextNoteToSelect = NextNoteToSelect();
-            if (nextNoteToSelect == null && Part.notes.Count > 0) {
-                nextNoteToSelect = Part.notes.First();
+            if (Part.notes.Intersect(Selection).ToList().Count == 0) {
+                return;
             }
-            SelectNote(nextNoteToSelect);
+            var lastSelectedNote = Part.notes.LastOrDefault(x => Selection.Contains(x));
+            var nextNoteToSelect = lastSelectedNote.Next;
+            if (nextNoteToSelect != null && Part.notes.Count > 0) {
+                SelectNote(nextNoteToSelect);
+            }
         }
 
         public void AddPrevNoteToSelection() {
+            //Hotkey: Shift+Left
             if (Part == null) {
                 return;
             }
-            var prevNoteToSelect = PrevNoteToSelect();
-            if (prevNoteToSelect == null && Part.notes.Count > 0) {
-                prevNoteToSelect = Part.notes.First();
+            if (Part.notes.Intersect(Selection).ToList().Count == 0) {
+                return;
             }
-            SelectNote(prevNoteToSelect);
+            var firstSelectedNote = Part.notes.FirstOrDefault(x => Selection.Contains(x));
+            var prevNoteToSelect = firstSelectedNote.Prev;
+            if (prevNoteToSelect != null && Part.notes.Count > 0) {
+                SelectNote(prevNoteToSelect);
+            }
         }
 
         public void SelectNotesUntil(UNote note) {
