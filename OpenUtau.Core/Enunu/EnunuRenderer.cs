@@ -79,8 +79,9 @@ namespace OpenUtau.Core.Enunu {
                         if (!File.Exists(f0Path) || !File.Exists(spPath) || !File.Exists(apPath)) {
                             Log.Information($"Starting enunu acoustic \"{ustPath}\"");
                             var enunuNotes = PhraseToEnunuNotes(phrase);
-                            // TODO: using first note tempo as ust tempo.
-                            EnunuUtils.WriteUst(enunuNotes, phrase.phones.First().tempo, phrase.singer, ustPath);
+                            //Whatever the tempo of current project is, the tmp ust file is always written in 125 bpm to correctly handle tempo changes.
+                            //Because 1tick = 1ms under 125bpm.
+                            EnunuUtils.WriteUst(enunuNotes, 125, phrase.singer, ustPath);
                             var response = EnunuClient.Inst.SendRequest<AcousticResponse>(new string[] { "acoustic", ustPath });
                             if (response.error != null) {
                                 throw new Exception(response.error);
@@ -195,7 +196,8 @@ namespace OpenUtau.Core.Enunu {
             foreach (var phone in phrase.phones) {
                 notes.Add(new EnunuNote {
                     lyric = phone.phoneme,
-                    length = phone.duration,
+                    //convert time to int before calculating duration to prevent cumulative error
+                    length = (int)Math.Round(phone.endMs)-(int)Math.Round(phone.positionMs),
                     noteNum = phone.tone,
                     timbre = phone.suffix,
                 });

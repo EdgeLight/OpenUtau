@@ -40,7 +40,9 @@ namespace OpenUtau.Core.Enunu {
             var scorePath = Path.Join(enutmpPath, $"score.lab");
             var timingPath = Path.Join(enutmpPath, $"timing.lab");
             var enunuNotes = NoteGroupsToEnunu(notes);
-            double bpm = timeAxis.GetBpmAtTick(notes[0][0].position);
+            double bpm = 125;
+            //Whatever the tempo of current project is, the tmp ust file is always written in 125 bpm to correctly handle tempo changes.
+            //Because 1tick = 1ms under 125bpm.
             if (!File.Exists(scorePath) || !File.Exists(timingPath)) {
                 EnunuUtils.WriteUst(enunuNotes, bpm, singer, ustPath);
                 var response = EnunuClient.Inst.SendRequest<TimingResponse>(new string[] { "timing", ustPath });
@@ -85,7 +87,7 @@ namespace OpenUtau.Core.Enunu {
                 if (position < notes[index][0].position) {
                     result.Add(new EnunuNote {
                         lyric = "R",
-                        length = notes[index][0].position - position,
+                        length = timeAxis.MsBetweenTickPos_int(position, notes[index][0].position),
                         noteNum = 60,
                         noteIndex = -1,
                     });
@@ -95,13 +97,16 @@ namespace OpenUtau.Core.Enunu {
                     if (lyric.Length > 0 && PinyinHelper.IsChinese(lyric[0])) {
                         lyric = PinyinHelper.GetPinyin(lyric).ToLowerInvariant();
                     }
+                    int noteDuration = notes[index].Sum(n => n.duration);
                     result.Add(new EnunuNote {
                         lyric = lyric,
-                        length = notes[index].Sum(n => n.duration),
+                        length = timeAxis.MsBetweenTickPos_int(
+                            notes[index][0].position, 
+                            notes[index][0].position+noteDuration),
                         noteNum = notes[index][0].tone,
                         noteIndex = index,
                     });
-                    position += result.Last().length;
+                    position += noteDuration;
                     index++;
                 }
             }

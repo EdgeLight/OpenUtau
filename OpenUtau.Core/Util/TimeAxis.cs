@@ -133,6 +133,11 @@ namespace OpenUtau.Core {
             return MsPosToTickPos(msEnd) - MsPosToTickPos(msPos);
         }
 
+        //convert time to int before calculating duration to prevent cumulative error
+        public int MsBetweenTickPos_int(double tickPos, double tickEnd) {
+            return (int)Math.Round(TickPosToMsPos(tickEnd)) - (int)Math.Round(TickPosToMsPos(tickPos));
+        }
+
         public double MsBetweenTickPos(double tickPos, double tickEnd) {
             return TickPosToMsPos(tickEnd) - TickPosToMsPos(tickPos);
         }
