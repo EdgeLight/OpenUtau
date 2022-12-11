@@ -39,6 +39,7 @@ namespace OpenUtau.App.Views {
         private TextBlock? valueTipText;
         private Point valueTipPointerPosition;
         private LyricBox? lyricBox;
+        private FindBox? findBox;
         private bool shouldOpenNotesContextMenu;
         private ExpSelector? expSelector1;
         private ExpSelector? expSelector2;
@@ -71,6 +72,7 @@ namespace OpenUtau.App.Views {
             valueTip.IsVisible = false;
             valueTipText = this.FindControl<TextBlock>("ValueTipText");
             lyricBox = this.FindControl<LyricBox>("LyricBox");
+            findBox = this.FindControl<FindBox>("FindBox");
             expSelector1 = this.FindControl<ExpSelector>("expSelector1");
             expSelector2 = this.FindControl<ExpSelector>("expSelector2");
             expSelector3 = this.FindControl<ExpSelector>("expSelector3");
@@ -856,6 +858,11 @@ namespace OpenUtau.App.Views {
                             EditLyrics();
                         }
                         return true;
+                    }
+                    break;
+                case Key.H:
+                    if (isCtrl) {
+                        findBox?.Show(ViewModel.NotesViewModel!); break;
                     }
                     break;
                 #endregion
