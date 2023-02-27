@@ -1,7 +1,7 @@
-﻿using System.Collections.Generic;
-using System.Linq;
+﻿using System.Linq;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
+using Avalonia.Input;
 using Avalonia.Markup.Xaml;
 using OpenUtau.App.ViewModels;
 using OpenUtau.Core;
@@ -11,9 +11,6 @@ using OpenUtau.App.Views;//TODO:可不可以在这里引用？
 namespace OpenUtau.App.Controls {
     public partial class FindBox : UserControl {
         private FindBoxViewModel viewModel;
-        private bool searched = false;
-        private List<UNote> searchResults = new List<UNote>();
-        private int focusIndex = -1;//当前聚焦的音符在searchResults中的位置，-1表示没有聚焦
 
         public FindBox() {
             InitializeComponent();
@@ -33,41 +30,21 @@ namespace OpenUtau.App.Controls {
         }
 
         private bool IsFocusingNote() {
-            return this.focusIndex >= 0;
+            return viewModel.focusIndex >= 0;
         }
 
         private UNote GetFocusingNote() {
-            return this.searchResults[this.focusIndex];
-        }
-
-        private void UpdateMatchesCount() {
-            if (this.searched) {
-                if (IsFocusingNote()) {
-                    viewModel.MatchesCount = (focusIndex+1).ToString() + "/" + searchResults.Count().ToString();
-                } else {
-                    viewModel.MatchesCount = searchResults.Count().ToString();
-                }
-            } else {
-                viewModel.MatchesCount = "";
-            }
-        }
-
-        private void Search() {
-            string SearchFor = viewModel.SearchFor;
-            searchResults = viewModel.NotesVm.Part.notes
-                .Where(x => x.lyric.Contains(SearchFor))
-                .ToList();
-            searched = true;
-        }
-
-        //在修改搜索词或修改音符后调用，放弃现有搜索结果
-        public void DiscardSearchResult() {
-            searched = false;
-            focusIndex = -1;
+            return viewModel.searchResults[viewModel.focusIndex];
         }
 
         private void OnFindNext(object? sender, RoutedEventArgs e) {
             FindNext();
+        }
+
+        private void SearchForBox_KeyDown(object? sender, KeyEventArgs e) {
+            if(e.Key == Key.Enter) {
+                FindNext();
+            }
         }
 
         private void FindNext() {
@@ -76,14 +53,14 @@ namespace OpenUtau.App.Controls {
                 return;
             }
             //如果还没搜索，则搜索
-            if (!searched) {
-                Search();
+            if (!viewModel.searched) {
+                viewModel.Search();
             }
             //获取当前查找位置
             //如果当前已进行了查找，则从当前查找结果位置开始，否则：
             //如果选中了音符，则从选中的第一个音符开始
             //如果没有选中音符，则从音轨开头开始
-            if (focusIndex < 0) {
+            if (viewModel.focusIndex < 0) {
                 int searchStartPos = 0;
                 if (NotesVm.Selection.Count > 0) {
                     searchStartPos = NotesVm.Selection.FirstOrDefault().position - 1;
@@ -91,27 +68,29 @@ namespace OpenUtau.App.Controls {
                 }
                 //从搜索位置开始查找，并跳转
                 //UNote的比较优先比较位置，如果位置相同则比较hash，只有完全相同的UNote才相等
-                var index = searchResults.BinarySearch(new UNote { position = searchStartPos });
+                var index = viewModel.searchResults.BinarySearch(new UNote { position = searchStartPos });
                 if (index < 0) {
                     index = ~index;//一般不存在相等匹配，则返回值为目标区间右端索引的按位反（负整数）
                 }
-                focusIndex = index;
+                viewModel.focusIndex = index;
             } else {
-                focusIndex++;
+                viewModel.focusIndex++;
             }
             //如果到最后一个音符，则弹窗
-            if (focusIndex >= searchResults.Count()) {
+            if (viewModel.focusIndex >= viewModel.searchResults.Count()) {
                 //TODO:弹窗
                 /*MessageBox.Show(
                     this,
                     "已到达当前区段结尾",//ThemeManager.GetString("dialogs.export.savefirst"),
                     ThemeManager.GetString("errors.caption"),
                     MessageBox.MessageBoxButtons.Ok);*/
-                focusIndex = 0;
+                viewModel.focusIndex = 0;
             }
             //跳转
-            DocManager.Inst.ExecuteCmd(new FocusNoteNotification(NotesVm.Part, searchResults[focusIndex]));
-            UpdateMatchesCount();
+            DocManager.Inst.ExecuteCmd(
+                new FocusNoteNotification(NotesVm.Part, viewModel.searchResults[viewModel.focusIndex])
+                );
+            viewModel.UpdateMatchesCount();
         }
 
         private void OnFindPrev(object? sender, RoutedEventArgs e) {
@@ -124,14 +103,14 @@ namespace OpenUtau.App.Controls {
                 return;
             }
             //如果还没搜索，则搜索
-            if (!searched) {
-                Search();
+            if (!viewModel.searched) {
+                viewModel.Search();
             }
             //获取当前查找位置
             //如果当前已进行了查找，则从当前查找结果位置开始，否则：
             //如果选中了音符，则从选中的第一个音符开始
             //如果没有选中音符，则从音轨开头开始
-            if (focusIndex < 0) {
+            if (viewModel.focusIndex < 0) {
                 int searchStartPos = NotesVm.Part.Duration;
                 if (NotesVm.Selection.Count > 0) {
                     searchStartPos = NotesVm.Selection.LastOrDefault().position + 1;
@@ -139,27 +118,29 @@ namespace OpenUtau.App.Controls {
                 }
                 //从搜索位置开始查找，并跳转
                 //UNote的比较优先比较位置，如果位置相同则比较hash，只有完全相同的UNote才相等
-                var index = searchResults.BinarySearch(new UNote { position = searchStartPos });
+                var index = viewModel.searchResults.BinarySearch(new UNote { position = searchStartPos });
                 if (index < 0) {
                     index = ~index;//一般不存在相等匹配，则返回值为目标区间右端索引的按位反（负整数）
                 }
-                focusIndex = index;
+                viewModel.focusIndex = index;
             } else {
-                focusIndex--;
+                viewModel.focusIndex--;
             }
             //如果到第一个音符，则弹窗
-            if (focusIndex < 0) {
+            if (viewModel.focusIndex < 0) {
                 //TODO:弹窗
                 /*MessageBox.Show(
                     this,
                     "已到达当前区段开头",//ThemeManager.GetString("dialogs.export.savefirst"),
                     ThemeManager.GetString("errors.caption"),
                     MessageBox.MessageBoxButtons.Ok);*/
-                focusIndex = searchResults.Count() - 1;
+                viewModel.focusIndex = viewModel.searchResults.Count() - 1;
             }
             //跳转
-            DocManager.Inst.ExecuteCmd(new FocusNoteNotification(NotesVm.Part, searchResults[focusIndex]));
-            UpdateMatchesCount();
+            DocManager.Inst.ExecuteCmd(
+                new FocusNoteNotification(NotesVm.Part, viewModel.searchResults[viewModel.focusIndex])
+                );
+            viewModel.UpdateMatchesCount();
         }
 
         private void OnReplaceOne(object? sender, RoutedEventArgs e) {
@@ -181,14 +162,14 @@ namespace OpenUtau.App.Controls {
             var SearchFor = viewModel.SearchFor;
             var ReplaceTo = viewModel.ReplaceTo;
             DocManager.Inst.StartUndoGroup();
-            foreach (UNote note in searchResults) {
+            foreach (UNote note in viewModel.searchResults) {
                 DocManager.Inst.ExecuteCmd(new ChangeNoteLyricCommand(
                     Part,
                     GetFocusingNote(),
                     note.lyric.Replace(SearchFor, ReplaceTo))); 
             }
             DocManager.Inst.EndUndoGroup();
-            Search();
+            viewModel.Search();
         }
         private void OnClose(object? sender, RoutedEventArgs e) {
             viewModel.IsVisible = false;
