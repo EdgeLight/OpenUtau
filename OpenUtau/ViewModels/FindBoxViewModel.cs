@@ -18,6 +18,8 @@ namespace OpenUtau.App.ViewModels {
     class FindBoxViewModel : ViewModelBase {
         [Reactive] public NotesViewModel? NotesVm { get; set; }
         [Reactive] public bool IsVisible { get; set; }
+        public bool SearchForBox_IsFocused { get; set; }
+        public bool ReplaceToBox_IsFocused { get; set; }
 
         private string searchFor;
         [Reactive] public string SearchFor {

@@ -11,12 +11,14 @@ using OpenUtau.App.Views;//TODO:可不可以在这里引用？
 namespace OpenUtau.App.Controls {
     public partial class FindBox : UserControl {
         private FindBoxViewModel viewModel;
+        private TextBox SearchFor_Box;
+        private TextBox ReplaceTo_Box;
 
         public FindBox() {
             InitializeComponent();
             DataContext = viewModel = new FindBoxViewModel();
-            //box = this.FindControl<TextBox>("PART_Box");
-            //listBox = this.FindControl<ListBox>("PART_Suggestions");
+            SearchFor_Box = this.FindControl<TextBox>("SearchFor_Box");
+            ReplaceTo_Box = this.FindControl<TextBox>("ReplaceTo_Box");
         }
 
         private void InitializeComponent() {
@@ -27,6 +29,11 @@ namespace OpenUtau.App.Controls {
         public void Show(NotesViewModel notesVm) {
             viewModel.NotesVm = notesVm;
             viewModel.IsVisible = true;
+        }
+
+        public bool IsInputing() {
+            return viewModel.IsVisible && 
+                (SearchFor_Box.IsFocused || ReplaceTo_Box.IsFocused);
         }
 
         private bool IsFocusingNote() {
@@ -55,6 +62,10 @@ namespace OpenUtau.App.Controls {
             //如果还没搜索，则搜索
             if (!viewModel.searched) {
                 viewModel.Search();
+            }
+            //如果搜索结果为空，则退出
+            if (viewModel.searchResults.Count() == 0) {
+                return;
             }
             //获取当前查找位置
             //如果当前已进行了查找，则从当前查找结果位置开始，否则：
@@ -105,6 +116,10 @@ namespace OpenUtau.App.Controls {
             //如果还没搜索，则搜索
             if (!viewModel.searched) {
                 viewModel.Search();
+            }
+            //如果搜索结果为空，则退出
+            if(viewModel.searchResults.Count() == 0) {
+                return;
             }
             //获取当前查找位置
             //如果当前已进行了查找，则从当前查找结果位置开始，否则：

@@ -796,6 +796,10 @@ namespace OpenUtau.App.Views {
                 args.Handled = false;
                 return;
             }
+            if (findBox != null && findBox.IsVisible && findBox.IsInputing()) {
+                args.Handled = false;
+                return;
+            }
             var notesVm = ViewModel.NotesViewModel;
             if (notesVm.Part == null) {
                 args.Handled = false;
