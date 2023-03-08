@@ -178,7 +178,7 @@ namespace OpenUtau.App.Views {
                 Filters = new List<FileDialogFilter>() {
                     new FileDialogFilter() {
                         Name = "Project Files",
-                        Extensions = new List<string>(){ "ustx", "vsqx", "ust", "mid", "midi" },
+                        Extensions = new List<string>(){ "ustx", "vsqx", "ust", "mid", "midi", "musicxml" },
                     },
                 },
                 AllowMultiple = true,
@@ -680,7 +680,7 @@ namespace OpenUtau.App.Views {
                 return;
             }
             var ext = System.IO.Path.GetExtension(file);
-            if (ext == ".ustx" || ext == ".ust" || ext == ".vsqx") {
+            if (ext == ".ustx" || ext == ".ust" || ext == ".vsqx" || ext == ".musicxml") {
                 if (!DocManager.Inst.ChangesSaved && !await AskIfSaveAndContinue()) {
                     return;
                 }
