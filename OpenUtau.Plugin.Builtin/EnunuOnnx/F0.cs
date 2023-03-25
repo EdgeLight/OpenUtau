@@ -1,4 +1,5 @@
-﻿using System.Linq;
+﻿using System;
+using System.Linq;
 using NumSharp;
 
 //reference: https://github.com/r9y9/nnmnkwii/blob/master/nnmnkwii/preprocessing/f0.py
@@ -6,11 +7,13 @@ using NumSharp;
 namespace OpenUtau.Plugin.Builtin.EnunuOnnx.nnmnkwii.preprocessing{
     public static class f0{
         public static NDArray interp1d(NDArray f0){
-            int ndim = f0.ndim;
-            //if len(f0) != f0.size:
-            //    raise RuntimeError("1d array is only supported")
+            if (f0.ndim > 1) {
+                throw new Exception("only 1d array is supported");
+            }
             var continuous_f0 = f0.flatten();
-            var nonzero_indices = np.nonzero(continuous_f0)[0].ToArray<int>();
+            var nonzero_indices = Enumerable.Range(0, f0.size)
+                .Where(i => (float)(f0[i])>0)
+                .ToArray();
             
             //Nothing to do
             if(nonzero_indices.Length<=0){

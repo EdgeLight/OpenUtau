@@ -1,18 +1,21 @@
-﻿using System;
+﻿using Microsoft.ML.OnnxRuntime;
+using Microsoft.ML.OnnxRuntime.Tensors;
+using NumSharp;
+using Serilog;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
-using OpenUtau.Core.Ustx;
+
 using OpenUtau.Api;
-using OpenUtau.Plugin.Builtin.EnunuOnnx.nnmnkwii.io.hts;
-using Microsoft.ML.OnnxRuntime;
-using OpenUtau.Plugin.Builtin.EnunuOnnx.nnmnkwii.frontend;
-using Microsoft.ML.OnnxRuntime.Tensors;
-using Serilog;
-using OpenUtau.Plugin.Builtin.EnunuOnnx;
 using OpenUtau.Core;
+using OpenUtau.Core.Ustx;
+using OpenUtau.Plugin.Builtin.EnunuOnnx;
+using OpenUtau.Plugin.Builtin.EnunuOnnx.nnmnkwii.frontend;
+using OpenUtau.Plugin.Builtin.EnunuOnnx.nnmnkwii.io.hts;
+using OpenUtau.Plugin.Builtin.EnunuOnnx.nnmnkwii.preprocessing;
 
 //This phonemizer is a pure C# implemention of the ENUNU phonemizer,
 //which aims at providing all ML-based synthesizer developers with a useable phonemizer,
@@ -40,8 +43,8 @@ namespace OpenUtau.Plugin.Builtin {
         Dictionary<int, Tuple<string, List<Regex>>> binaryDict = new Dictionary<int, Tuple<string, List<Regex>>>();
         Dictionary<int, Tuple<string, Regex>> numericDict = new Dictionary<int, Tuple<string, Regex>>();
         int[] pitchIndices = new int[] { };
-        Scaler durationInScaler = new Scaler();
-        Scaler durationOutScaler = new Scaler();
+        Scaler durationInScaler;
+        Scaler durationOutScaler;
         
         //information used by openutau phonemizer
         protected IG2p g2p;
@@ -50,7 +53,6 @@ namespace OpenUtau.Plugin.Builtin {
 
         //result caching
         private Dictionary<int, List<Tuple<string, int>>> partResult = new Dictionary<int, List<Tuple<string, int>>>();
-
         int paddingMs = 500;//段首辅音预留时长
 
         public override void SetSinger(USinger singer) {
@@ -465,7 +467,6 @@ namespace OpenUtau.Plugin.Builtin {
             return htsPhonemes;
         }
 
-
         void ProcessPart(Note[][] phrase) {
             int offsetTick = phrase[0][0].position;
             int sentenceDurMs = paddingMs + (int)timeAxis.MsBetweenTickPos(
@@ -536,34 +537,39 @@ namespace OpenUtau.Plugin.Builtin {
                 numericDict
             );
             //log_f0_conditioning
-            float lastMidi = 60;            
-            foreach(int idx in pitchIndices) {
-                foreach(var line in linguistic_features) {
-                    if (line[idx] > 0) {
-                        lastMidi = line[idx];
-                    }
-                    line[idx] = (float)Math.Log(MusicMath.ToneToFreq(lastMidi));
-                }
+            foreach(int featureId in pitchIndices) {  
+                linguistic_features[Slice.All,featureId] = ToneToFreqLog(
+                    f0.interp1d(linguistic_features[Slice.All,featureId]));
             }
 
-            int phonemesCount = linguistic_features.Count;
-            int featuresDim = linguistic_features[0].Count;
-
+            int phonemesCount = linguistic_features.shape[0];
+            int featuresDim = linguistic_features.shape[1];
+            //debug
+            File.WriteAllText(
+                "C:/users/lin/desktop/1.txt",
+                String.Join("\n", 
+                    Enumerable.Range(0, featuresDim)
+                        .Select(x => linguistic_features[Slice.All, x].ToString()[1..^1])
+                )
+            );
+            //debug
             //duration inference
             var duration_linguistic_features = durationInScaler.transformed(linguistic_features);
+            
             var durationInputs = new List<NamedOnnxValue>();
             durationInputs.Add(NamedOnnxValue.CreateFromTensor("linguistic_features",
                 new DenseTensor<float>(
-                    duration_linguistic_features.SelectMany(x => x).ToArray(),
+                    duration_linguistic_features.ToArray<float>(),
                     new int[] { 1, phonemesCount, featuresDim }, false)));
             durationInputs.Add(NamedOnnxValue.CreateFromTensor("lengths",
                 new DenseTensor<long>(new long[] { (long)phonemesCount },
                 new int[] { 1 }, false)));
             var durationOutputs = durationModel.Run(durationInputs);
-            var ph_dur_float = durationOutputs.First().AsTensor<float>().ToList();
-            durationOutScaler[0].inverse_transform(ph_dur_float);//Phoneme Duration Result in Ms
-            var ph_dur = ph_dur_float.Select(x => (double)x).ToList();
-
+            //Phoneme Duration Result in Ms
+            var ph_dur = durationOutScaler.inverse_transformed(
+                np.array(durationOutputs.First().AsTensor<float>().ToList())
+            ).ToArray<float>().Select(x => (double)x).ToList();
+           
             //对齐，将时长序列转化为位置序列，单位ms
             var positions = new List<double>();
             List<double> alignGroup = ph_dur.GetRange(0, phAlignPoints[0].Item1 - 1);
@@ -595,6 +601,15 @@ namespace OpenUtau.Plugin.Builtin {
                 }
                 partResult[group[0].position] = noteResult;
             }
+        }
+
+        public NDArray ToneToFreqLog(NDArray x) {
+            //Math.Log(440 * (2 ^ ((x - 69) / 12)))
+            //Here k=Math.Log(2)/12, b=Math.Log(440)-69*Math.Log(2)/12
+            //If input is 0, output is also 0
+            const float k = 0.057762265f;
+            const float b = 2.101178438f;
+            return (x > 0f).astype(np.float32) * (k*x + b);
         }
 
         //缩放音素时长序列
