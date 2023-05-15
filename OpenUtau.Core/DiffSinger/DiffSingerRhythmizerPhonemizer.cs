@@ -31,7 +31,7 @@ namespace OpenUtau.Core.DiffSinger {
         public Dictionary<string, string[]> phoneDict;
         public List<string> phonemes = new List<string>();
         //默认包名
-        public static string DefaultRhythmizer = "rhythmizer_zh_opencpop_strict";
+        public static string DefaultRhythmizer = "rhythmizer_jp_oniku";
 
         //加载字典
         public static Dictionary<string, string[]> LoadPhoneDict(string path, Encoding TextFileEncoding) {
@@ -64,7 +64,7 @@ namespace OpenUtau.Core.DiffSinger {
         }
     }
 
-    [Phonemizer("DiffSinger Rhythmizer Phonemizer", "DIFFS RHY", language: "ZH")]
+    [Phonemizer("DiffSinger Rhythmizer Phonemizer JA", "DIFFS JA", language: "JA")]
     public class DiffSingerRhythmizerPhonemizer : Phonemizer {
         USinger singer;
         DsRhythmizer rhythmizer;
